@@ -173,7 +173,9 @@ class TestExpediente:
         assert exp.dni.nombre == exp.formulario.sol_nombre
         assert exp.dni.apellidos == exp.formulario.sol_apellidos
         assert exp.dni.numero_dni == exp.formulario.sol_nif
-        assert exp.dni.fecha_nacimiento == exp.formulario.sol_fecha_nacimiento
+        # Las fechas difieren en formato (DNI: "DD MM YYYY", Form: "DD/MM/YYYY")
+        dni_fn = exp.dni.fecha_nacimiento.replace(" ", "/")
+        assert dni_fn == exp.formulario.sol_fecha_nacimiento
 
     def test_expediente_inconsistente_tiene_diferencias(self, factory):
         """Un expediente inconsistente debe tener al menos una discrepancia."""
