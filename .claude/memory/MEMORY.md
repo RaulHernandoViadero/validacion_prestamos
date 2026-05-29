@@ -9,44 +9,47 @@
 ## Progreso por fases
 
 ### ✅ FASE 1 — Generación de datos sintéticos (COMPLETA)
-| Fichero | Estado |
-|---|---|
-| `src/config.py` | ✅ Hiperparámetros centralizados |
-| `src/data_generation/fake_data_factory.py` | ✅ NIF, MRZ ICAO, préstamos, 24 tests pasan |
-| `src/data_generation/dni_generator.py` | ✅ DNI 1518×957 px, 9 ROIs, layout escalado con _B |
-| `src/data_generation/loan_form_generator.py` | ✅ Formulario 1588×2246 px, 14 ROIs |
-| `src/data_generation/augmentation.py` | ✅ 11 transformaciones: rotación, ruido, perspectiva, oclusión… |
-| `src/data_generation/annotation_writer.py` | ✅ ROIs → YOLO .txt, genera YAML de dataset |
-| `generate_dataset.py` | ✅ Script maestro CLI — 0 errores en prueba de 5 expedientes |
-| `tests/test_fake_data_factory.py` | ✅ 24/24 tests pasan |
+- `fake_data_factory.py` ✅ — NIF, MRZ ICAO, préstamos, 24 tests pasan
+- `dni_generator.py` ✅ — DNI 1518×957 px, 9 ROIs, layout escalado con _B=1.5
+- `loan_form_generator.py` ✅ — Formulario 1588×2246 px, 14 ROIs
+- `augmentation.py` ✅ — 11 transformaciones
+- `annotation_writer.py` ✅ — ROIs → YOLO .txt + YAML dataset
+- `generate_dataset.py` ✅ — Script maestro CLI (probado con 5 y 400 expedientes)
+- Dataset de 400 expedientes generándose en background cuando se cerró
 
-### ⏳ FASE 2 — Entrenamiento de modelos (PENDIENTE)
-Siguiente fichero: `src/models/yolo_trainer.py`
-- Entrenar YOLOv8n sobre dataset DNI (9 clases) y formulario (14 clases)
-- Modelo base: `yolov8n.pt`, 100 epochs, batch 16, imgsz 640
-- Después: `src/models/authenticity_classifier.py` (ResNet-18 fine-tuned)
+### ✅ FASE 2 — Modelos (COMPLETA — pendiente entrenar)
+- `yolo_trainer.py` ✅ — entrena yolo_dni.pt y yolo_loan.pt
+- `authenticity_classifier.py` ✅ — ResNet-18 fine-tuned, 8.4M params entrenables
+- `model_utils.py` ✅ — utilidades compartidas
 
-### ⏳ FASE 3 — Pipeline de inferencia (PENDIENTE)
-`yolo_inference.py` → `easyocr_engine.py` → `text_postprocessor.py` → `cross_validator.py` → `verdict_engine.py` → `document_pipeline.py`
+### 🔶 FASE 3 — Pipeline de inferencia (PARCIALMENTE COMPLETA)
+- `yolo_inference.py` ✅ — wrapper YOLOv8 con ROIDetectado + ResultadoDeteccion
+- `easyocr_engine.py` ✅ — singleton EasyOCR, extrae texto de ROIs
+- `text_postprocessor.py` ✅ — normaliza NIF, fechas, importes, nombres (testeado OK)
+- `cross_validator.py` ✅ — 9 reglas R01-R09 implementadas y commiteadas
+- `verdict_engine.py` ✅ — motor de veredicto APTO/INCONSISTENTE con confianza
+- `business_rules.py` ❌ — PENDIENTE (siguiente fichero a escribir)
+- `document_pipeline.py` ❌ — PENDIENTE (orquestador end-to-end)
 
 ### ⏳ FASE 4 — API REST FastAPI (PENDIENTE)
 ### ⏳ FASE 5 — Frontend Streamlit (PENDIENTE)
 ### ⏳ FASE 6 — Integración, tests, Docker (PENDIENTE)
 
+## Último commit en GitHub
+`feat(fase3): inferencia YOLO + OCR + postprocesado + validación cruzada + veredicto`
+- cross_validator.py y verdict_engine.py están escritos pero NO commiteados todavía
+- Hay que hacer git add + commit al empezar mañana
+
+## Próximos pasos (en orden)
+1. `git add src/validation/cross_validator.py src/validation/verdict_engine.py && git commit && git push`
+2. Escribir `src/validation/business_rules.py`
+3. Escribir `src/pipeline/document_pipeline.py` (orquestador end-to-end)
+4. Empezar Fase 4: `api/schemas/models.py` → routers → `api/main.py`
+
 ## Decisiones tomadas
-- Datos sintéticos 100% con Faker es_ES + Pillow (sin datos reales)
-- DNI: _SCALE=3 → 1518×957 px (legible para OCR y humanos)
+- DNI: _SCALE=3 → 1518×957 px, _B=1.5 para escalar todo el layout
 - Formulario: _SCALE=2 → 1588×2246 px
-- Commits por fichero + push automático a `dev`
-- Sin downscale — se guarda a resolución completa de generación
+- ResNet-18: solo layer4 + fc entrenables (fine-tuning parcial)
+- Veredicto: 70% peso reglas + 30% peso confianza OCR
+- Tolerancia similitud nombres: 85% (Levenshtein normalizado)
 - Dataset: 400 expedientes, 15% inconsistentes, splits 70/17.5/12.5
-
-## Notas importantes
-- Las imágenes de preview están en `data/raw/` pero NO se suben al repo (.gitignore)
-- Los pesos entrenados tampoco se suben (`weights/`)
-- El dataset completo (400 exp) hay que generarlo con: `C:\Users\raulh\anaconda3\python.exe generate_dataset.py --size 400 --seed 42`
-- Tarda ~8-10 minutos
-
-## Siguiente sesión — continuar aquí
-1. Verificar que el dataset completo se generó OK (`data/splits/` tiene imágenes)
-2. Empezar `src/models/yolo_trainer.py`
