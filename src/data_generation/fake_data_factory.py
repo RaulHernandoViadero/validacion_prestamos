@@ -339,9 +339,11 @@ class FakeDataFactory:
         dc_opcional = self._mrz_check_digit(opcional1)
         linea_1 = f"IDESP{num_doc}{dc_doc}{opcional1}{dc_opcional}"[:30]
 
-        # Línea 2: fn + dc_fn + sexo + fc + dc_fc + ESP + opcionales
-        opcional2 = "<" * 9
-        linea_2 = f"{fn}{dc_fn}{sexo_mrz}{fc}{dc_fc}ESP{opcional2}"[:30]
+        # Línea 2 (TD1, 30 chars): fn(6)+dc(1)+sexo(1)+fc(6)+dc(1)+nat(3)+opc(11)+dc_compuesto(1)
+        opcional2 = "<" * 11
+        cuerpo_l2 = f"{fn}{dc_fn}{sexo_mrz}{fc}{dc_fc}ESP{opcional2}"
+        dc_compuesto = self._mrz_check_digit(linea_1[5:] + cuerpo_l2[:7] + cuerpo_l2[8:15])
+        linea_2 = f"{cuerpo_l2}{dc_compuesto}"[:30]
 
         # Línea 3: apellidos << nombre (no se incluye aquí pero se genera)
         apellidos_mrz = self._normalizar_mrz(apellidos, 13)
