@@ -55,13 +55,14 @@ SPLIT_RATIOS: dict[str, float] = {
 
 # ─── Dimensiones de imagen ───────────────────────────────────────────────────
 
-# DNI español — formato ID-1 (85.6 mm × 53.98 mm) a 150 DPI
-DNI_WIDTH_PX: int = 506
-DNI_HEIGHT_PX: int = 319
+# DNI español — formato ID-1 (85.6 mm × 53.98 mm) a 450 DPI (3× base de 150)
+# Resolución alta para legibilidad humana y precisión OCR
+DNI_WIDTH_PX: int = 1518
+DNI_HEIGHT_PX: int = 957
 
-# Formulario A4 a 96 DPI
-LOAN_WIDTH_PX: int = 794
-LOAN_HEIGHT_PX: int = 1123
+# Formulario A4 a 192 DPI (2× base de 96)
+LOAN_WIDTH_PX: int = 1588
+LOAN_HEIGHT_PX: int = 2246
 
 # Tamaño de entrada para YOLOv8
 YOLO_IMGSZ: int = 640

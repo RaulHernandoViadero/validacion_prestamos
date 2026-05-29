@@ -58,9 +58,9 @@ _COL_WHITE          = (255, 255, 255)    # Blanco puro
 
 # ─── Escala y dimensiones ─────────────────────────────────────────────────────
 
-_SCALE = 2                               # Sobremuestreo × 2 para mejor OCR
-_W     = LOAN_WIDTH_PX  * _SCALE        # 1588 px
-_H     = LOAN_HEIGHT_PX * _SCALE        # 2246 px
+_SCALE = 2                               # Factor de resolución respecto al A4 a 96 DPI.
+_W     = LOAN_WIDTH_PX                  # 1588 px (ya incorpora el _SCALE en config)
+_H     = LOAN_HEIGHT_PX                 # 2246 px
 _M     = 60                             # Margen lateral (px escalados)
 
 # ─── Fuentes del sistema (Windows) ────────────────────────────────────────────
@@ -139,7 +139,8 @@ class LoanFormGenerator:
 
         Returns:
             Tupla (ruta_imagen, rois) donde rois es un dict
-            {nombre_clase: (x1, y1, x2, y2)} en coordenadas finales (794×1123).
+            {nombre_clase: (x1, y1, x2, y2)} en coordenadas de la imagen guardada
+            (1588×2246 con _SCALE=2).
         """
         img  = Image.new("RGB", (_W, _H), _COL_BODY_BG)
         draw = ImageDraw.Draw(img)
@@ -155,20 +156,13 @@ class LoanFormGenerator:
         self._dibujar_declaracion_firma(draw, y)
         self._dibujar_pie(draw)
 
-        # Escalar a resolución final
-        img_final = img.resize((LOAN_WIDTH_PX, LOAN_HEIGHT_PX), Image.LANCZOS)
-
-        rois_scaled = {
-            k: (int(x1/_SCALE), int(y1/_SCALE), int(x2/_SCALE), int(y2/_SCALE))
-            for k, (x1, y1, x2, y2) in rois.items()
-        }
-
+        # Guardar a resolución completa de generación (sin downscale)
         ruta = self._output_dir / f"{expediente_id}_prestamo.png"
         if guardar:
-            img_final.save(str(ruta), "PNG", dpi=(96, 96))
-            logger.debug("Formulario guardado: %s", ruta)
+            img.save(str(ruta), "PNG", dpi=(96 * _SCALE, 96 * _SCALE))
+            logger.debug("Formulario guardado: %s (%dx%d)", ruta, _W, _H)
 
-        return ruta, rois_scaled
+        return ruta, rois
 
     # ── Capas de dibujo ───────────────────────────────────────────────────────
 

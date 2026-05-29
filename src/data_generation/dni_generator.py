@@ -65,33 +65,36 @@ _COL_GOLD           = (185, 140, 40)      # Dorado para el escudo
 _COL_WHITE          = (255, 255, 255)
 _COL_BLACK          = (0,   0,   0)
 
-# ─── Layout (píxeles, base 506 × 319) ────────────────────────────────────────
-# Todos los valores son para la resolución base. El generador puede escalar.
+# ─── Layout (1518 × 957 px, _SCALE = 3 respecto al ID-1 a 150 DPI) ───────────
 
-_SCALE = 2          # Factor de sobremuestre (genera a 1012×638, guarda a 506×319)
-                    # Mejora drásticamente la calidad del texto para OCR.
+_SCALE = 3          # Factor de resolución respecto al ID-1 físico a 150 DPI.
+                    # Imagen final: 1518×957 px — alta calidad para OCR y visualización.
 
-_W = DNI_WIDTH_PX  * _SCALE   # 1012 px
-_H = DNI_HEIGHT_PX * _SCALE   # 638 px
+_W = DNI_WIDTH_PX    # 1518 px
+_H = DNI_HEIGHT_PX   # 957 px
 
-# Zonas principales (en píxeles escalados)
-_HDR_H    = 76          # Altura de la cabecera burdeos
-_MRZ_Y    = _H - 106    # Inicio de la zona MRZ
-_LEFT_W   = 310         # Ancho del panel izquierdo (foto + firma)
-_MARGIN   = 16          # Margen general
-_EU_W     = 24          # Ancho de la franja EU
+# Todas las constantes de posición escalan con _SCALE
+# (diseño base creado para _SCALE=2 → multiplicar por _SCALE/2 = 1.5)
+_B = _SCALE / 2      # factor de escala respecto al diseño base
+
+_HDR_H    = int(76   * _B)          # 114 px — cabecera burdeos
+_MRZ_H    = int(106  * _B)          # 159 px — zona MRZ
+_MRZ_Y    = _H - _MRZ_H             # 798 px — inicio zona MRZ
+_LEFT_W   = int(310  * _B)          # 465 px — panel izquierdo (foto + firma)
+_MARGIN   = int(16   * _B)          # 24 px — margen general
+_EU_W     = int(24   * _B)          # 36 px — franja EU
 
 # Foto
 _PHOTO_X  = _EU_W + _MARGIN
 _PHOTO_Y  = _HDR_H + _MARGIN
 _PHOTO_W  = _LEFT_W - _EU_W - 2 * _MARGIN
-_PHOTO_H  = 352
+_PHOTO_H  = int(352  * _B)          # 528 px — altura de la foto
 
 # Firma
 _SIG_X    = _PHOTO_X
 _SIG_Y    = _PHOTO_Y + _PHOTO_H + _MARGIN
 _SIG_W    = _PHOTO_W
-_SIG_H    = 70
+_SIG_H    = int(70   * _B)          # 105 px — altura de la firma
 
 # Panel de texto (derecha)
 _TEXT_X   = _LEFT_W + _MARGIN
@@ -173,8 +176,8 @@ class DNIGenerator:
 
         Returns:
             Tupla (ruta_imagen, rois) donde rois es un diccionario
-            {nombre_clase: (x1, y1, x2, y2)} en coordenadas de la imagen FINAL
-            (506 × 319), no del canvas escalado.
+            {nombre_clase: (x1, y1, x2, y2)} en coordenadas de la imagen guardada
+            (1518 × 957 con _SCALE=3).
         """
         # Canvas de alta resolución
         img = Image.new("RGB", (_W, _H), _COL_BODY_BG)
@@ -192,24 +195,13 @@ class DNIGenerator:
         self._dibujar_zona_mrz(draw, datos, rois)
         self._dibujar_bordes_exteriores(draw)
 
-        # Escalar a resolución final
-        img_final = img.resize((DNI_WIDTH_PX, DNI_HEIGHT_PX), Image.LANCZOS)
-
-        # Escalar coordenadas de ROIs a resolución final
-        rois_scaled = {
-            nombre: (
-                int(x1 / _SCALE), int(y1 / _SCALE),
-                int(x2 / _SCALE), int(y2 / _SCALE),
-            )
-            for nombre, (x1, y1, x2, y2) in rois.items()
-        }
-
+        # Guardar a la resolución de generación completa (sin downscale)
         ruta = self._output_dir / f"{expediente_id}_dni.png"
         if guardar:
-            img_final.save(str(ruta), "PNG", dpi=(150, 150))
-            logger.debug("DNI guardado: %s", ruta)
+            img.save(str(ruta), "PNG", dpi=(150 * _SCALE, 150 * _SCALE))
+            logger.debug("DNI guardado: %s (%dx%d)", ruta, _W, _H)
 
-        return ruta, rois_scaled
+        return ruta, rois
 
     # ── Capas de dibujo ───────────────────────────────────────────────────────
 
@@ -249,27 +241,29 @@ class DNIGenerator:
         draw.rectangle([0, _HDR_H - 4, _W, _HDR_H], fill=_COL_EU_GOLD)
 
         # ── Escudo simplificado ────────────────────────────────────────────
-        ex, ey = 18, 8
-        self._dibujar_escudo(draw, ex, ey, ancho=58, alto=60)
+        ex, ey = int(18*_B), int(6*_B)
+        self._dibujar_escudo(draw, ex, ey, ancho=int(58*_B), alto=int(62*_B))
 
         # ── Texto central ──────────────────────────────────────────────────
-        cx = 340
-        draw.text((cx, 10), "REINO DE ESPAÑA", font=self._fnt_header,
+        cx = int(340 * _B)
+        draw.text((cx, int(10*_B)), "REINO DE ESPAÑA", font=self._fnt_header,
                   fill=_COL_WHITE, anchor="mt")
-        draw.text((cx, 28), "DOCUMENTO NACIONAL DE IDENTIDAD",
+        draw.text((cx, int(34*_B)), "DOCUMENTO NACIONAL DE IDENTIDAD",
                   font=self._fnt_header_sm, fill=(230, 210, 150), anchor="mt")
 
         # Número de DNI prominente en la cabecera (parte derecha)
-        nx = _W - _MARGIN - 10
-        draw.text((nx, 12), datos.numero_dni,
+        nx = _W - _MARGIN - int(10*_B)
+        draw.text((nx, int(12*_B)), datos.numero_dni,
                   font=self._fnt_dni_num, fill=_COL_EU_GOLD, anchor="rt")
 
-        # Etiqueta "DNI" pequeña encima del número
-        draw.text((nx, 6), "DNI / NIF",
+        # Etiqueta "DNI/NIF" pequeña encima del número
+        draw.text((nx, int(4*_B)), "DNI / NIF",
                   font=self._fnt_titulo, fill=(210, 180, 100), anchor="rt")
 
         # Estrellas UE (esquina superior izquierda, zona estrecha)
-        self._dibujar_circulo_estrellas(draw, 82, _HDR_H // 2, radio=22, n=12)
+        self._dibujar_circulo_estrellas(
+            draw, int(82*_B), _HDR_H // 2, radio=int(22*_B), n=12
+        )
 
     def _dibujar_escudo(
         self, draw: ImageDraw.ImageDraw,
@@ -396,21 +390,19 @@ class DNIGenerator:
         )
 
         # Pequeñas estrellas decorativas
-        for y_s in [_HDR_H + 30, _HDR_H + 60, _MRZ_Y - 60, _MRZ_Y - 30]:
+        paso = int(60 * _B)
+        for y_s in [_HDR_H + paso, _HDR_H + paso*2, _MRZ_Y - paso*2, _MRZ_Y - paso]:
             self._dibujar_estrella(
                 draw, _EU_W // 2, y_s,
-                r_ext=4, r_int=2, fill=_COL_EU_GOLD,
+                r_ext=int(4*_B), r_int=int(2*_B), fill=_COL_EU_GOLD,
             )
 
         # "ESP" vertical en la franja
-        # (letra a letra rotada simulando el texto vertical)
         letras_esp = ["E", "S", "P"]
         for i, letra in enumerate(letras_esp):
             draw.text(
-                (3, _HDR_H + 100 + i * 16),
-                letra,
-                font=self._fnt_titulo,
-                fill=_COL_WHITE,
+                (int(3*_B), _HDR_H + int(100*_B) + i * int(20*_B)),
+                letra, font=self._fnt_titulo, fill=_COL_WHITE,
             )
 
     def _dibujar_foto(
@@ -431,21 +423,20 @@ class DNIGenerator:
 
         cx = (x1 + x2) // 2
         # Cabeza
-        cabeza_r = 46
+        cabeza_r = int(46 * _B)
         cabeza_cx = cx
-        cabeza_cy = y1 + 95
+        cabeza_cy = y1 + int(95 * _B)
         draw.ellipse([
             cabeza_cx - cabeza_r, cabeza_cy - cabeza_r,
             cabeza_cx + cabeza_r, cabeza_cy + cabeza_r,
         ], fill=_COL_PHOTO_SKIN)
 
         # Pelo
-        pelo_r = cabeza_r + 6
+        pelo_r = cabeza_r + int(6 * _B)
         if sexo == "F":
-            # Pelo más largo para mujeres
             draw.ellipse([
                 cabeza_cx - pelo_r, cabeza_cy - pelo_r,
-                cabeza_cx + pelo_r, cabeza_cy + 20,
+                cabeza_cx + pelo_r, cabeza_cy + int(20*_B),
             ], fill=_COL_PHOTO_HAIR)
             draw.ellipse([
                 cabeza_cx - cabeza_r, cabeza_cy - cabeza_r,
@@ -454,59 +445,58 @@ class DNIGenerator:
         else:
             draw.arc([
                 cabeza_cx - pelo_r, cabeza_cy - pelo_r,
-                cabeza_cx + pelo_r, cabeza_cy - cabeza_r + 10,
-            ], start=180, end=0, fill=_COL_PHOTO_HAIR, width=18)
+                cabeza_cx + pelo_r, cabeza_cy - cabeza_r + int(10*_B),
+            ], start=180, end=0, fill=_COL_PHOTO_HAIR, width=int(18*_B))
 
-        # Rasgos faciales
-        # Ojos
-        for ojo_x in [cabeza_cx - 16, cabeza_cx + 16]:
-            draw.ellipse([ojo_x - 6, cabeza_cy - 8, ojo_x + 6, cabeza_cy + 4],
-                         fill=_COL_WHITE)
-            draw.ellipse([ojo_x - 3, cabeza_cy - 5, ojo_x + 3, cabeza_cy + 1],
-                         fill=(40, 30, 20))
+        # Rasgos faciales — Ojos
+        ojo_sep = int(16 * _B)
+        ojo_rx, ojo_ry = int(6*_B), int(6*_B)
+        for ojo_x in [cabeza_cx - ojo_sep, cabeza_cx + ojo_sep]:
+            draw.ellipse([ojo_x - ojo_rx, cabeza_cy - ojo_ry,
+                          ojo_x + ojo_rx, cabeza_cy + ojo_ry], fill=_COL_WHITE)
+            iris = int(3*_B)
+            draw.ellipse([ojo_x - iris, cabeza_cy - iris,
+                          ojo_x + iris, cabeza_cy + iris], fill=(40, 30, 20))
         # Nariz
         draw.polygon([
-            (cabeza_cx, cabeza_cy + 5),
-            (cabeza_cx - 6, cabeza_cy + 22),
-            (cabeza_cx + 6, cabeza_cy + 22),
+            (cabeza_cx, cabeza_cy + int(5*_B)),
+            (cabeza_cx - int(6*_B), cabeza_cy + int(22*_B)),
+            (cabeza_cx + int(6*_B), cabeza_cy + int(22*_B)),
         ], fill=(190, 155, 125))
         # Boca
-        draw.arc([cabeza_cx - 16, cabeza_cy + 20,
-                  cabeza_cx + 16, cabeza_cy + 38],
-                 start=0, end=180, fill=(160, 80, 80), width=3)
+        draw.arc([cabeza_cx - int(16*_B), cabeza_cy + int(20*_B),
+                  cabeza_cx + int(16*_B), cabeza_cy + int(38*_B)],
+                 start=0, end=180, fill=(160, 80, 80), width=int(3*_B))
         # Cejas
-        for ceja_x in [cabeza_cx - 22, cabeza_cx + 8]:
+        for ceja_x in [cabeza_cx - int(22*_B), cabeza_cx + int(8*_B)]:
             draw.line([
-                (ceja_x, cabeza_cy - 18),
-                (ceja_x + 14, cabeza_cy - 22),
-            ], fill=_COL_PHOTO_HAIR, width=4)
+                (ceja_x, cabeza_cy - int(18*_B)),
+                (ceja_x + int(14*_B), cabeza_cy - int(22*_B)),
+            ], fill=_COL_PHOTO_HAIR, width=int(4*_B))
 
         # Cuello
-        cuello_w = 22
-        cuello_top = cabeza_cy + cabeza_r - 10
-        cuello_bot = cuello_top + 45
+        cuello_w   = int(22 * _B)
+        cuello_top = cabeza_cy + cabeza_r - int(10*_B)
+        cuello_bot = cuello_top + int(45*_B)
         draw.rectangle([
             cabeza_cx - cuello_w // 2, cuello_top,
             cabeza_cx + cuello_w // 2, cuello_bot,
         ], fill=_COL_PHOTO_SKIN)
 
         # Hombros y torso
-        hombro_y = cuello_bot - 10
-        torso_ancho = 150 if sexo == "M" else 130
+        hombro_y    = cuello_bot - int(10*_B)
+        torso_ancho = int(150*_B) if sexo == "M" else int(130*_B)
         draw.polygon([
             (cabeza_cx - torso_ancho // 2, y2),
             (cabeza_cx + torso_ancho // 2, y2),
-            (cabeza_cx + torso_ancho // 2 - 10, hombro_y),
-            (cabeza_cx - torso_ancho // 2 + 10, hombro_y),
+            (cabeza_cx + torso_ancho // 2 - int(10*_B), hombro_y),
+            (cabeza_cx - torso_ancho // 2 + int(10*_B), hombro_y),
         ], fill=_COL_PHOTO_SHIRT)
 
         # Etiqueta de foto
         draw.text(
-            (x1 + _PHOTO_W // 2, y2 + 6),
-            "FOTOGRAFÍA",
-            font=self._fnt_titulo,
-            fill=_COL_LABEL,
-            anchor="mt",
+            (x1 + _PHOTO_W // 2, y2 + int(6*_B)),
+            "FOTOGRAFÍA", font=self._fnt_titulo, fill=_COL_LABEL, anchor="mt",
         )
 
         rois["foto"] = (x1, y1, x2, y2)
@@ -615,6 +605,12 @@ class DNIGenerator:
         x = _TEXT_X
         max_x = _W - _MARGIN
 
+        # Espaciados escalados
+        LBL_H  = int(20 * _B)   # altura de la etiqueta
+        VAL_H  = int(28 * _B)   # altura del valor
+        SEP_H  = int(12 * _B)   # separación tras la línea divisoria
+        ROW_H  = LBL_H + VAL_H + SEP_H   # altura total de una fila
+
         def campo(
             label: str,
             valor: str,
@@ -623,125 +619,106 @@ class DNIGenerator:
             fnt_val: Optional[ImageFont.FreeTypeFont] = None,
             col_val: tuple = _COL_VALUE,
         ) -> int:
-            """
-            Dibuja un campo (etiqueta + valor) y devuelve la Y del siguiente campo.
-            """
+            """Dibuja un campo (etiqueta + valor) y devuelve la Y del siguiente."""
             fnt_v = fnt_val or self._fnt_value
-
-            # Etiqueta
             draw.text((x, y), label, font=self._fnt_label, fill=_COL_LABEL)
-            y_val = y + 18
-
-            # Valor
+            y_val = y + LBL_H
             draw.text((x, y_val), valor, font=fnt_v, fill=col_val)
-
-            # Línea separadora sutil
-            y_sep = y_val + 22
+            y_sep = y_val + VAL_H
             draw.line([(x, y_sep), (max_x - 4, y_sep)], fill=_COL_BORDER, width=1)
-
             if roi_key:
-                # Bounding box del valor (no de la etiqueta)
                 try:
                     bb = draw.textbbox((x, y_val), valor, font=fnt_v)
-                    rois[roi_key] = (bb[0] - 2, bb[1] - 2, min(bb[2] + 2, max_x), bb[3] + 2)
+                    rois[roi_key] = (bb[0]-2, bb[1]-2, min(bb[2]+2, max_x), bb[3]+2)
                 except Exception:
-                    rois[roi_key] = (x, y_val, max_x, y_val + 20)
-
-            return y_sep + 8
+                    rois[roi_key] = (x, y_val, max_x, y_sep)
+            return y_sep + SEP_H
 
         # ── APELLIDOS ─────────────────────────────────────────────────────────
         y = _TEXT_Y
-        y = campo("APELLIDOS", datos.apellidos, y, roi_key="apellidos",
-                  fnt_val=self._fnt_value)
+        y = campo("APELLIDOS", datos.apellidos, y, roi_key="apellidos")
 
         # ── NOMBRE ────────────────────────────────────────────────────────────
-        y = campo("NOMBRE", datos.nombre, y, roi_key="nombre",
-                  fnt_val=self._fnt_value)
+        y = campo("NOMBRE", datos.nombre, y, roi_key="nombre")
 
-        # ── SEXO | NACIONALIDAD | FECHA NACIMIENTO (en una línea) ─────────────
-        # Columnas con ancho proporcional: SEXO estrecho, NACION y FNAC más anchas
+        # ── SEXO | NACIONALIDAD | FECHA NACIMIENTO ────────────────────────────
         ancho_total = _W - x - _MARGIN
-        col_sexo  = int(ancho_total * 0.12)
-        col_nac   = int(ancho_total * 0.38)
-        # col_fnac ocupa el resto
+        col_sexo = int(ancho_total * 0.12)
+        col_nac  = int(ancho_total * 0.38)
 
         # SEXO
         draw.text((x, y), "SEXO", font=self._fnt_label, fill=_COL_LABEL)
-        draw.text((x, y + 18), datos.sexo, font=self._fnt_value_sm, fill=_COL_VALUE)
+        draw.text((x, y + LBL_H), datos.sexo, font=self._fnt_value_sm, fill=_COL_VALUE)
 
         # NACIONALIDAD
-        x_nac = x + col_sexo + 10
+        x_nac = x + col_sexo + int(10 * _B)
         draw.text((x_nac, y), "NACIONALIDAD", font=self._fnt_label, fill=_COL_LABEL)
-        draw.text((x_nac, y + 18), datos.nacionalidad,
+        draw.text((x_nac, y + LBL_H), datos.nacionalidad,
                   font=self._fnt_value_sm, fill=_COL_VALUE)
         try:
-            bb_nac = draw.textbbox((x_nac, y + 18), datos.nacionalidad, font=self._fnt_value_sm)
-            rois["nacionalidad"] = (bb_nac[0]-2, bb_nac[1]-2, bb_nac[2]+2, bb_nac[3]+2)
+            bb = draw.textbbox((x_nac, y + LBL_H), datos.nacionalidad, font=self._fnt_value_sm)
+            rois["nacionalidad"] = (bb[0]-2, bb[1]-2, bb[2]+2, bb[3]+2)
         except Exception:
-            rois["nacionalidad"] = (x_nac, y + 18, x_nac + col_nac, y + 40)
+            rois["nacionalidad"] = (x_nac, y + LBL_H, x_nac + col_nac, y + ROW_H)
 
         # FECHA NACIMIENTO
         x_fnac = x_nac + col_nac
         draw.text((x_fnac, y), "FECHA DE NACIMIENTO", font=self._fnt_label, fill=_COL_LABEL)
-        draw.text((x_fnac, y + 18), datos.fecha_nacimiento,
+        draw.text((x_fnac, y + LBL_H), datos.fecha_nacimiento,
                   font=self._fnt_value_sm, fill=_COL_VALUE)
         try:
-            bb_fn = draw.textbbox((x_fnac, y + 18), datos.fecha_nacimiento,
-                                  font=self._fnt_value_sm)
-            rois["fecha_nacimiento"] = (bb_fn[0]-2, bb_fn[1]-2, bb_fn[2]+2, bb_fn[3]+2)
+            bb = draw.textbbox((x_fnac, y + LBL_H), datos.fecha_nacimiento,
+                               font=self._fnt_value_sm)
+            rois["fecha_nacimiento"] = (bb[0]-2, bb[1]-2, bb[2]+2, bb[3]+2)
         except Exception:
-            rois["fecha_nacimiento"] = (x_fnac, y + 18, _W - _MARGIN, y + 40)
+            rois["fecha_nacimiento"] = (x_fnac, y + LBL_H, _W - _MARGIN, y + ROW_H)
 
-        y += 48
+        y += ROW_H
         draw.line([(x, y), (max_x - 4, y)], fill=_COL_BORDER, width=1)
-        y += 8
+        y += SEP_H
 
         # ── LUGAR DE NACIMIENTO ───────────────────────────────────────────────
         draw.text((x, y), "LUGAR DE NACIMIENTO", font=self._fnt_label, fill=_COL_LABEL)
-        y_val_ln = y + 18
-        draw.text((x, y_val_ln), datos.lugar_nacimiento,
+        draw.text((x, y + LBL_H), datos.lugar_nacimiento,
                   font=self._fnt_value_sm, fill=_COL_VALUE)
-        y += 48
+        y += ROW_H
         draw.line([(x, y), (max_x - 4, y)], fill=_COL_BORDER, width=1)
-        y += 8
+        y += SEP_H
 
         # ── FECHA DE CADUCIDAD | NÚMERO SOPORTE ──────────────────────────────
-        # CADUCIDAD
         draw.text((x, y), "VALIDEZ", font=self._fnt_label, fill=_COL_LABEL)
-        y_vcad = y + 18
-        draw.text((x, y_vcad), datos.fecha_caducidad,
-                  font=self._fnt_value, fill=_COL_VALUE)
+        y_vcad = y + LBL_H
+        draw.text((x, y_vcad), datos.fecha_caducidad, font=self._fnt_value, fill=_COL_VALUE)
         try:
-            bb_cad = draw.textbbox((x, y_vcad), datos.fecha_caducidad, font=self._fnt_value)
-            rois["fecha_caducidad"] = (bb_cad[0]-2, bb_cad[1]-2, bb_cad[2]+2, bb_cad[3]+2)
+            bb = draw.textbbox((x, y_vcad), datos.fecha_caducidad, font=self._fnt_value)
+            rois["fecha_caducidad"] = (bb[0]-2, bb[1]-2, bb[2]+2, bb[3]+2)
         except Exception:
-            rois["fecha_caducidad"] = (x, y_vcad, x + 160, y_vcad + 24)
+            rois["fecha_caducidad"] = (x, y_vcad, x + int(200*_B), y_vcad + VAL_H)
 
-        # NÚMERO SOPORTE
-        x_ns = x + 220
+        x_ns = x + int(300 * _B)
         draw.text((x_ns, y), "NÚMERO SOPORTE", font=self._fnt_label, fill=_COL_LABEL)
-        draw.text((x_ns, y + 18), datos.numero_soporte,
+        draw.text((x_ns, y + LBL_H), datos.numero_soporte,
                   font=self._fnt_value_sm, fill=_COL_LABEL)
 
-        y += 48
+        y += ROW_H
         draw.line([(x, y), (max_x - 4, y)], fill=_COL_BORDER, width=1)
-        y += 8
+        y += SEP_H
 
-        # ── NÚMERO DNI PROMINENTE (bloque final del área de texto) ────────────
-        # Fondo semitransparente
-        draw.rectangle([x - 4, y, max_x, y + 60],
-                       fill=(245, 243, 235), outline=_COL_BORDER, width=1)
-        draw.text((x + 4, y + 4), "Número de documento / Document number",
+        # ── NÚMERO DNI PROMINENTE ─────────────────────────────────────────────
+        box_h = int(70 * _B)
+        draw.rectangle([x - 4, y, max_x, y + box_h],
+                       fill=(245, 243, 235), outline=_COL_BORDER, width=2)
+        draw.text((x + 6, y + 4),
+                  "Número de documento / Document number",
                   font=self._fnt_titulo, fill=_COL_LABEL)
-        y_dni_val = y + 20
-        draw.text((x + 4, y_dni_val), datos.numero_dni,
+        y_dni_val = y + int(18 * _B)
+        draw.text((x + 6, y_dni_val), datos.numero_dni,
                   font=self._fnt_dni_num, fill=_COL_VALUE_DNI)
         try:
-            bb_dni = draw.textbbox((x + 4, y_dni_val), datos.numero_dni,
-                                   font=self._fnt_dni_num)
-            rois["numero_dni"] = (bb_dni[0]-2, bb_dni[1]-2, bb_dni[2]+2, bb_dni[3]+2)
+            bb = draw.textbbox((x + 6, y_dni_val), datos.numero_dni, font=self._fnt_dni_num)
+            rois["numero_dni"] = (bb[0]-2, bb[1]-2, bb[2]+2, bb[3]+2)
         except Exception:
-            rois["numero_dni"] = (x + 4, y_dni_val, x + 200, y_dni_val + 36)
+            rois["numero_dni"] = (x + 6, y_dni_val, x + int(280*_B), y_dni_val + int(40*_B))
 
     def _dibujar_zona_mrz(
         self,
@@ -761,7 +738,7 @@ class DNIGenerator:
 
         # Etiqueta de zona
         draw.text(
-            (_W // 2, _MRZ_Y + 6),
+            (_W // 2, _MRZ_Y + int(6*_B)),
             "<<  ZONA DE LECTURA AUTOMÁTICA  /  MACHINE READABLE ZONE  >>",
             font=self._fnt_mrz_label,
             fill=_COL_LABEL,
@@ -769,36 +746,34 @@ class DNIGenerator:
         )
 
         # Líneas MRZ
-        mrz_y1 = _MRZ_Y + 24
-        mrz_y2 = mrz_y1 + 36
+        mrz_y1 = _MRZ_Y + int(26*_B)
+        mrz_y2 = mrz_y1 + int(44*_B)
 
         # Fondo blanco de las líneas MRZ
-        draw.rectangle([_MARGIN, mrz_y1 - 4, _W - _MARGIN, mrz_y2 + 40],
-                       fill=_COL_WHITE, outline=_COL_BORDER, width=1)
+        draw.rectangle([_MARGIN, mrz_y1 - int(4*_B),
+                        _W - _MARGIN, mrz_y2 + int(44*_B)],
+                       fill=_COL_WHITE, outline=_COL_BORDER, width=2)
 
         # Texto MRZ línea 1
-        draw.text((_MARGIN + 6, mrz_y1),
-                  datos.mrz_linea_1,
-                  font=self._fnt_mrz,
-                  fill=_COL_BLACK)
+        draw.text((_MARGIN + int(6*_B), mrz_y1),
+                  datos.mrz_linea_1, font=self._fnt_mrz, fill=_COL_BLACK)
 
         # Texto MRZ línea 2
-        draw.text((_MARGIN + 6, mrz_y2),
-                  datos.mrz_linea_2,
-                  font=self._fnt_mrz,
-                  fill=_COL_BLACK)
+        draw.text((_MARGIN + int(6*_B), mrz_y2),
+                  datos.mrz_linea_2, font=self._fnt_mrz, fill=_COL_BLACK)
 
         try:
-            bb1 = draw.textbbox((_MARGIN + 6, mrz_y1), datos.mrz_linea_1, font=self._fnt_mrz)
-            bb2 = draw.textbbox((_MARGIN + 6, mrz_y2), datos.mrz_linea_2, font=self._fnt_mrz)
+            off = int(6*_B)
+            bb1 = draw.textbbox((_MARGIN + off, mrz_y1), datos.mrz_linea_1, font=self._fnt_mrz)
+            bb2 = draw.textbbox((_MARGIN + off, mrz_y2), datos.mrz_linea_2, font=self._fnt_mrz)
             rois["mrz_line"] = (
-                min(bb1[0], bb2[0]) - 4,
-                bb1[1] - 4,
-                max(bb1[2], bb2[2]) + 4,
-                bb2[3] + 4,
+                min(bb1[0], bb2[0]) - int(4*_B),
+                bb1[1] - int(4*_B),
+                max(bb1[2], bb2[2]) + int(4*_B),
+                bb2[3] + int(4*_B),
             )
         except Exception:
-            rois["mrz_line"] = (_MARGIN, mrz_y1, _W - _MARGIN, mrz_y2 + 24)
+            rois["mrz_line"] = (_MARGIN, mrz_y1, _W - _MARGIN, mrz_y2 + int(28*_B))
 
     def _dibujar_bordes_exteriores(self, draw: ImageDraw.ImageDraw) -> None:
         """Dibuja el borde exterior de la tarjeta con esquinas redondeadas simuladas."""
