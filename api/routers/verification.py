@@ -300,8 +300,20 @@ async def verificar_expediente(
             ).model_dump(),
         ) from exc
 
-    # Construir y devolver la respuesta
-    return _construir_response(resultado)
+    # Construir la respuesta
+    response = _construir_response(resultado)
+
+    # Registrar en historial y métricas (importación local para evitar
+    # importaciones circulares en el arranque del módulo)
+    try:
+        from api.routers.history import registrar_expediente
+        from api.routers.metrics import registrar_resultado
+        registrar_expediente(response)
+        registrar_resultado(response)
+    except Exception as exc:
+        logger.warning("No se pudo registrar en historial/métricas: %s", exc)
+
+    return response
 
 
 @router.get(

@@ -1,0 +1,80 @@
+# ── docker-compose.yml — Sistema de Verificación Documental ──────────────────
+#
+# Levanta los dos servicios del sistema:
+#   api       — FastAPI en el puerto 8000
+#   frontend  — Streamlit en el puerto 8501
+#
+# Uso:
+#   docker compose up --build          # primera vez
+#   docker compose up                  # reusar imágenes existentes
+#   docker compose down                # detener y eliminar contenedores
+#   docker compose logs -f api         # ver logs de la API
+#
+# Requisitos:
+#   - Docker Desktop (o Docker Engine + Compose plugin)
+#   - Carpeta weights/ con yolo_dni.pt, yolo_prestamo.pt, authenticity.pt
+#     (si no existen, el pipeline funciona en modo sin modelos entrenados)
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  # ── API FastAPI ─────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: verificacion-api:latest
+    container_name: verificacion-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Montar pesos de modelos entrenados (read-only)
+      - ./weights:/app/weights:ro
+      # Montar datos para generación del dataset (si se usa desde la API)
+      - ./data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - verificacion-net
+
+  # ── Frontend Streamlit ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    image: verificacion-frontend:latest
+    container_name: verificacion-frontend
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      # La URL interna de la red Docker (no localhost)
+      - API_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks:
+      - verificacion-net
+
+# ── Red interna ───────────────────────────────────────────────────────────────
+networks:
+  verificacion-net:
+    driver: bridge

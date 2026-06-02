@@ -26,8 +26,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from api.routers import history, metrics, verification
-from api.routers.history import registrar_expediente
-from api.routers.metrics import registrar_resultado
 from api.routers.verification import set_pipeline
 from api.schemas.models import ErrorResponse, HealthResponse
 from src.pipeline.document_pipeline import DocumentPipeline, PipelineConfig
@@ -219,30 +217,8 @@ app.include_router(history.router, prefix=_PREFIX)
 app.include_router(metrics.router, prefix=_PREFIX)
 
 
-# ── Hook: registrar en historial y métricas tras cada verificación ────────────
-
-# Sobreescribir el endpoint de verificación para registrar el resultado
-# en historial y métricas (observer pattern sin modificar los routers).
-
-_original_verificar = verification.verificar_expediente.__wrapped__ \
-    if hasattr(verification.verificar_expediente, "__wrapped__") \
-    else None
-
-
-async def _verificar_con_registro(*args, **kwargs):
-    """Wrapper que registra el resultado en historial y métricas."""
-    response = await verification.verificar_expediente(*args, **kwargs)
-    registrar_expediente(response)
-    registrar_resultado(response)
-    return response
-
-
-# Reemplazar el endpoint en el router para añadir el registro
-for route in app.routes:
-    if hasattr(route, "path") and route.path == f"{_PREFIX}/verify/":
-        if hasattr(route, "endpoint"):
-            route.endpoint = _verificar_con_registro
-            break
+# El registro en historial y métricas se realiza directamente en
+# api/routers/verification.py tras cada verificación exitosa.
 
 
 # ── Arranque directo (desarrollo) ─────────────────────────────────────────────
