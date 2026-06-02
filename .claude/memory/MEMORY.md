@@ -14,37 +14,54 @@
 - `loan_form_generator.py` ✅ — Formulario 1588×2246 px, 14 ROIs
 - `augmentation.py` ✅ — 11 transformaciones
 - `annotation_writer.py` ✅ — ROIs → YOLO .txt + YAML dataset
-- `generate_dataset.py` ✅ — Script maestro CLI (probado con 5 y 400 expedientes)
-- Dataset de 400 expedientes generándose en background cuando se cerró
+- `generate_dataset.py` ✅ — Script maestro CLI
 
 ### ✅ FASE 2 — Modelos (COMPLETA — pendiente entrenar)
 - `yolo_trainer.py` ✅ — entrena yolo_dni.pt y yolo_loan.pt
 - `authenticity_classifier.py` ✅ — ResNet-18 fine-tuned, 8.4M params entrenables
 - `model_utils.py` ✅ — utilidades compartidas
 
-### 🔶 FASE 3 — Pipeline de inferencia (PARCIALMENTE COMPLETA)
-- `yolo_inference.py` ✅ — wrapper YOLOv8 con ROIDetectado + ResultadoDeteccion
-- `easyocr_engine.py` ✅ — singleton EasyOCR, extrae texto de ROIs
-- `text_postprocessor.py` ✅ — normaliza NIF, fechas, importes, nombres (testeado OK)
-- `cross_validator.py` ✅ — 9 reglas R01-R09 implementadas y commiteadas
-- `verdict_engine.py` ✅ — motor de veredicto APTO/INCONSISTENTE con confianza
-- `business_rules.py` ❌ — PENDIENTE (siguiente fichero a escribir)
-- `document_pipeline.py` ❌ — PENDIENTE (orquestador end-to-end)
+### ✅ FASE 3 — Pipeline de inferencia (COMPLETA)
+- `yolo_inference.py` ✅ — wrapper YOLOv8
+- `easyocr_engine.py` ✅ — singleton EasyOCR
+- `text_postprocessor.py` ✅ — normaliza NIF, fechas, importes, nombres
+- `cross_validator.py` ✅ — 9 reglas R01-R09
+- `verdict_engine.py` ✅ — motor de veredicto APTO/INCONSISTENTE
+- `business_rules.py` ✅ — MRZ check digits, cuota francesa, perfil riesgo
+- `document_pipeline.py` ✅ — orquestador end-to-end 6 etapas
 
-### ⏳ FASE 4 — API REST FastAPI (PENDIENTE)
-### ⏳ FASE 5 — Frontend Streamlit (PENDIENTE)
-### ⏳ FASE 6 — Integración, tests, Docker (PENDIENTE)
+### ✅ FASE 4 — API REST FastAPI (COMPLETA)
+- `api/schemas/models.py` ✅ — Pydantic v2 schemas (request/response/error)
+- `api/routers/verification.py` ✅ — POST /api/v1/verify
+- `api/routers/history.py` ✅ — GET/DELETE /api/v1/history
+- `api/routers/metrics.py` ✅ — GET /api/v1/metrics
+- `api/main.py` ✅ — app FastAPI con lifespan, CORS, logging, /health
+- `api/Dockerfile` ✅ — multi-stage python:3.11-slim
+
+### ✅ FASE 5 — Frontend Streamlit (COMPLETA)
+- `app/streamlit_app.py` ✅ — app principal con sidebar y estado API
+- `app/pages/verificacion.py` ✅ — subida DNI+formulario, veredicto, 5 tabs
+- `app/pages/historial.py` ✅ — lista paginada con filtros
+- `app/pages/metricas.py` ✅ — KPIs, barras de progreso por regla
+- `app/Dockerfile` ✅ — imagen slim solo streamlit+httpx+Pillow
+
+### 🔶 FASE 6 — Integración, tests, Docker (PARCIAL)
+- `docker-compose.yml` ✅ — api+frontend con healthchecks y red interna
+- `requirements.txt` ✅ — dependencias completas con versiones fijadas
+- `tests/test_api.py` ✅ — 17 tests integración API (17/17 passing)
+- `src/reporting/pdf_report_generator.py` ❌ — PENDIENTE
+- `tests/test_pipeline.py` ❌ — PENDIENTE (tests del pipeline completo)
+- `notebooks/` ❌ — PENDIENTE (análisis exploratorio y demo)
+- `README.md` ❌ — PENDIENTE
 
 ## Último commit en GitHub
-`feat(fase3): inferencia YOLO + OCR + postprocesado + validación cruzada + veredicto`
-- cross_validator.py y verdict_engine.py están escritos pero NO commiteados todavía
-- Hay que hacer git add + commit al empezar mañana
+`feat(fase6): docker-compose + tests integración API (17/17 passing)` (rama dev)
 
 ## Próximos pasos (en orden)
-1. `git add src/validation/cross_validator.py src/validation/verdict_engine.py && git commit && git push`
-2. Escribir `src/validation/business_rules.py`
-3. Escribir `src/pipeline/document_pipeline.py` (orquestador end-to-end)
-4. Empezar Fase 4: `api/schemas/models.py` → routers → `api/main.py`
+1. Escribir `src/reporting/pdf_report_generator.py` — genera PDF del expediente
+2. Escribir `tests/test_pipeline.py` — tests del pipeline sin modelos
+3. Escribir `notebooks/01_exploracion_datos.ipynb` — análisis del dataset
+4. Escribir `README.md` — documentación del proyecto
 
 ## Decisiones tomadas
 - DNI: _SCALE=3 → 1518×957 px, _B=1.5 para escalar todo el layout
@@ -53,3 +70,5 @@
 - Veredicto: 70% peso reglas + 30% peso confianza OCR
 - Tolerancia similitud nombres: 85% (Levenshtein normalizado)
 - Dataset: 400 expedientes, 15% inconsistentes, splits 70/17.5/12.5
+- API: FastAPI + registro directo en historial/métricas desde verification.py
+- Tests: TestClient de FastAPI con pipeline sin modelos (YOLO/OCR deshabilitados)
