@@ -16,6 +16,15 @@ Variables de entorno:
 """
 
 import os
+import sys
+from pathlib import Path
+
+# Asegurar que el directorio raíz del proyecto está en sys.path.
+# Streamlit añade el directorio del script al path, pero los imports
+# del tipo `from app.pages.X import Y` necesitan el directorio padre.
+_ROOT = Path(__file__).parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 import streamlit as st
 
