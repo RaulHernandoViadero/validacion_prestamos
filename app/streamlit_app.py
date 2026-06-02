@@ -136,13 +136,13 @@ with st.sidebar:
 # ── Páginas ───────────────────────────────────────────────────────────────────
 
 if pagina == "🔍 Verificar Expediente":
-    from app.pages.verificacion import mostrar_pagina_verificacion
+    from app._pages.verificacion import mostrar_pagina_verificacion
     mostrar_pagina_verificacion(API_URL)
 
 elif pagina == "📋 Historial":
-    from app.pages.historial import mostrar_pagina_historial
+    from app._pages.historial import mostrar_pagina_historial
     mostrar_pagina_historial(API_URL)
 
 elif pagina == "📊 Métricas":
-    from app.pages.metricas import mostrar_pagina_metricas
+    from app._pages.metricas import mostrar_pagina_metricas
     mostrar_pagina_metricas(API_URL)
