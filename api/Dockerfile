@@ -23,9 +23,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 # Dependencias del sistema necesarias para compilar algunas librerías Python
+# Nota: libgl1-mesa-glx fue renombrado a libgl1 en Debian trixie+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
-        libgl1-mesa-glx \
+        libgl1 \
         libglib2.0-0 \
         libsm6 \
         libxext6 \
@@ -50,13 +51,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH"
 
 # Dependencias de sistema en tiempo de ejecución (solo las de runtime)
+# Nota: libgl1-mesa-glx fue renombrado a libgl1 en Debian trixie+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libgl1-mesa-glx \
+        libgl1 \
         libglib2.0-0 \
         libsm6 \
         libxext6 \
         libxrender-dev \
-        # Para EasyOCR y OpenCV
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 

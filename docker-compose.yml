@@ -16,8 +16,6 @@
 #     (si no existen, el pipeline funciona en modo sin modelos entrenados)
 # ─────────────────────────────────────────────────────────────────────────────
 
-version: "3.9"
-
 services:
 
   # ── API FastAPI ─────────────────────────────────────────────────────────────
