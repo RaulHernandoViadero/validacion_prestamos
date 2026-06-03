@@ -64,10 +64,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copiar el virtualenv del builder
 COPY --from=builder /opt/venv /opt/venv
 
-# Crear usuario no-root para seguridad
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+# Crear usuario no-root con home directory real (EasyOCR descarga modelos en ~)
+RUN addgroup --system appgroup && \
+    adduser --system --ingroup appgroup --home /home/appuser appuser && \
+    mkdir -p /home/appuser/.EasyOCR && \
+    chown -R appuser:appgroup /home/appuser
 
 WORKDIR /app
+ENV HOME=/home/appuser
 
 # Copiar solo el código fuente necesario (no tests, no notebooks)
 COPY src/       src/

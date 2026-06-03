@@ -252,6 +252,7 @@ class TextPostprocessor:
         texto = re.sub(r"[Ee][Uu][Rr][Oo][Ss]?", "", texto, flags=re.I)
         texto = re.sub(r"EUR", "", texto, flags=re.I)
         texto = re.sub(r"[/][Mm][Ee][Ss]", "", texto, flags=re.I)
+        texto = re.sub(r"[Mm][Ee][Ss]", "", texto, flags=re.I)   # "334.631mes" → "334.631"
         # Normalizar separadores: 1.234,56 → 1234.56
         if "," in texto and "." in texto:
             texto = texto.replace(".", "").replace(",", ".")
