@@ -1,0 +1,19 @@
+{
+  "experimento": "yolo_loan_20260602_2328",
+  "fecha": "2026-06-03T05:49:46.004568",
+  "tipo": "prestamo",
+  "metricas": {
+    "mAP50": 0.9949999999999998,
+    "mAP50_95": 0.9553861222760889,
+    "precision": 0.9968334059774657,
+    "recall": 1.0
+  },
+  "objetivos": {
+    "mAP50": 0.85,
+    "mAP50_95": 0.65
+  },
+  "cumple_objetivos": {
+    "mAP50": true,
+    "mAP50_95": true
+  }
+}

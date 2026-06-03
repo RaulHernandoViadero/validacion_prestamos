@@ -1,0 +1,19 @@
+{
+  "experimento": "yolo_dni_20260602_1742",
+  "fecha": "2026-06-02T23:28:31.766494",
+  "tipo": "dni",
+  "metricas": {
+    "mAP50": 0.995,
+    "mAP50_95": 0.989794988029039,
+    "precision": 0.9987101930576089,
+    "recall": 1.0
+  },
+  "objetivos": {
+    "mAP50": 0.85,
+    "mAP50_95": 0.65
+  },
+  "cumple_objetivos": {
+    "mAP50": true,
+    "mAP50_95": true
+  }
+}
