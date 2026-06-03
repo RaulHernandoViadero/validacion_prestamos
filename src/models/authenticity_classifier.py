@@ -468,8 +468,20 @@ class AuthenticityClassifier:
             },
             "historial": historial,
         }
+        def _serializable(obj):
+            """Convierte tipos numpy/torch a Python nativos para JSON."""
+            import numpy as np
+            if isinstance(obj, (np.bool_,)):
+                return bool(obj)
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                return float(obj)
+            raise TypeError(f"No serializable: {type(obj)}")
+
         ruta_hist.write_text(
-            json.dumps(datos, indent=2, ensure_ascii=False), encoding="utf-8"
+            json.dumps(datos, indent=2, ensure_ascii=False, default=_serializable),
+            encoding="utf-8",
         )
         logger.info("Historial guardado: %s", ruta_hist)
 
