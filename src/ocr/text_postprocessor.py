@@ -253,16 +253,22 @@ class TextPostprocessor:
         texto = re.sub(r"EUR", "", texto, flags=re.I)
         texto = re.sub(r"[/][Mm][Ee][Ss]", "", texto, flags=re.I)
         texto = re.sub(r"[Mm][Ee][Ss]", "", texto, flags=re.I)   # "334.631mes" → "334.631"
-        # Normalizar separadores: 1.234,56 → 1234.56
+        # Normalizar separadores europeos: 1.234,56 → 1234.56 / 27.182 → 27182
         if "," in texto and "." in texto:
+            # Formato europeo claro: 1.234,56 → quitar puntos, coma→punto
             texto = texto.replace(".", "").replace(",", ".")
         elif "," in texto:
-            # Puede ser decimal europeo o separador de miles
+            # Solo coma: puede ser decimal (1,5) o miles (1,500)
             partes = texto.split(",")
             if len(partes[-1]) <= 2:
-                texto = texto.replace(",", ".")
+                texto = texto.replace(",", ".")   # decimal europeo
             else:
-                texto = texto.replace(",", "")
+                texto = texto.replace(",", "")    # miles
+        elif "." in texto:
+            # Solo punto: si hay exactamente 3 dígitos tras él → separador de miles
+            partes = texto.split(".")
+            if len(partes) == 2 and len(partes[1]) == 3 and partes[1].isdigit():
+                texto = texto.replace(".", "")    # 27.182 → 27182
         # Aplicar correcciones OCR a dígitos
         texto = texto.translate(_OCR_DIGIT_FIXES)
         try:
