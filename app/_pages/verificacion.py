@@ -175,9 +175,31 @@ def _mostrar_resultado(r: dict) -> None:
         </div>
         """, unsafe_allow_html=True)
 
-    # Tiempo de proceso
+    # Tiempo de proceso + botón PDF
     t_ms = r.get("tiempo_total_ms", 0)
-    st.caption(f"⏱ Procesado en {t_ms:.0f} ms")
+    col_t, col_pdf = st.columns([3, 1])
+    col_t.caption(f"⏱ Procesado en {t_ms:.0f} ms")
+    with col_pdf:
+        try:
+            import tempfile
+            from pathlib import Path
+            from src.reporting.pdf_report_generator import PDFReportGenerator
+            gen = PDFReportGenerator()
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                ruta_pdf = Path(tmp.name)
+            gen.generar(r, ruta_salida=ruta_pdf)
+            with open(ruta_pdf, "rb") as f_pdf:
+                pdf_bytes = f_pdf.read()
+            st.download_button(
+                label="📄 Exportar PDF",
+                data=pdf_bytes,
+                file_name=f"informe_{exp_id}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+            ruta_pdf.unlink(missing_ok=True)
+        except Exception:
+            pass   # PDF no disponible en Docker sin montaje src/
 
     # Advertencias
     for adv in r.get("advertencias", []):

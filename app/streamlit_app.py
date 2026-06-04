@@ -104,7 +104,7 @@ with st.sidebar:
 
     pagina = st.radio(
         "Navegación",
-        options=["🔍 Verificar Expediente", "📋 Historial", "📊 Métricas"],
+        options=["🔍 Verificar Expediente", "📋 Historial", "📊 Métricas", "🖥 Dashboard"],
         index=0,
     )
     st.divider()
@@ -146,3 +146,7 @@ elif pagina == "📋 Historial":
 elif pagina == "📊 Métricas":
     from app._pages.metricas import mostrar_pagina_metricas
     mostrar_pagina_metricas(API_URL)
+
+elif pagina == "🖥 Dashboard":
+    from app._pages.dashboard import mostrar_pagina_dashboard
+    mostrar_pagina_dashboard(API_URL)
