@@ -72,9 +72,10 @@ class ROIDetectado:
 @dataclass
 class ResultadoDeteccion:
     """Resultado completo de la detección sobre una imagen."""
-    tipo:           str                      # "dni" o "prestamo"
-    rois:           list[ROIDetectado] = field(default_factory=list)
-    imagen_anotada: Optional[Image.Image] = None
+    tipo:             str                      # "dni" o "prestamo"
+    rois:             list[ROIDetectado] = field(default_factory=list)
+    imagen_anotada:   Optional[Image.Image] = None
+    imagen_original:  Optional[Image.Image] = None   # para fallback OCR ancho completo
 
     def to_dict(self) -> dict:
         return {
@@ -158,7 +159,7 @@ class YOLOInference:
             self._cargar_modelo()
 
         img_rgb = imagen.convert("RGB")
-        resultado = ResultadoDeteccion(tipo=self._tipo)
+        resultado = ResultadoDeteccion(tipo=self._tipo, imagen_original=img_rgb)
 
         # Inferencia YOLO
         predicciones = self._modelo.predict(
@@ -190,7 +191,13 @@ class YOLOInference:
                     continue
 
                 clase  = self._clases[clase_id]
-                recorte = img_rgb.crop((x1, y1, x2, y2))
+                # Margen estándar (~8% del alto, mínimo 4px)
+                pad = max(4, int((y2 - y1) * 0.08))
+                rx1 = max(0, x1 - 4)
+                ry1 = max(0, y1 - pad)
+                rx2 = min(w,  x2 + 4)
+                ry2 = min(h,  y2 + pad)
+                recorte = img_rgb.crop((rx1, ry1, rx2, ry2))
 
                 resultado.rois.append(ROIDetectado(
                     clase=clase,

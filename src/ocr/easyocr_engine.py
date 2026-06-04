@@ -133,6 +133,7 @@ class EasyOCREngine:
         """
         excluir = set(clases_excluir or ["foto", "firma"])
         textos: list[TextoExtraido] = []
+        img_original = resultado_deteccion.imagen_original
 
         for roi in resultado_deteccion.rois:
             if roi.clase in excluir:
@@ -143,6 +144,29 @@ class EasyOCREngine:
                 continue
 
             texto, confianza = self.leer_imagen(roi.recorte)
+
+            # Fallback x=0: si el OCR devuelve vacío y el bbox tiene x1 > 100,
+            # probablemente YOLO detectó la bbox desplazada a la derecha pero el
+            # texto real está en la columna izquierda (x cercano a 0).
+            # Releer la MISMA franja Y pero empezando desde x=0.
+            if not texto.strip() and img_original is not None:
+                x1, y1, x2, y2 = roi.bbox
+                w_img, h_img = img_original.size
+                if x1 > 100:   # solo si YOLO empieza lejos del borde izquierdo
+                    pad_v = max(4, (y2 - y1) // 4)
+                    recorte_fb = img_original.crop((
+                        0,
+                        y1,                    # sin expandir arriba → salta la etiqueta
+                        min(w_img, x2 + 4),
+                        min(h_img, y2 + pad_v),
+                    ))
+                    texto_fb, conf_fb = self.leer_imagen(recorte_fb)
+                    if texto_fb.strip():
+                        logger.debug(
+                            "Fallback x=0 para '%s': '%s'",
+                            roi.clase, texto_fb[:40],
+                        )
+                        texto, confianza = texto_fb, conf_fb
 
             textos.append(TextoExtraido(
                 clase=roi.clase,

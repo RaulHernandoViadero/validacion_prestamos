@@ -245,31 +245,47 @@ class TextPostprocessor:
         return texto, False, f"No se pudo parsear la fecha: '{texto}'"
 
     def _norm_importe(self, texto: str) -> tuple[str, bool, str]:
-        """Normaliza importes monetarios a formato float string."""
+        """Normaliza importes monetarios a formato float string.
+
+        Soporta formatos:
+          Europeo:  1.234,56 €    → 1234.56
+          US:       1,234.56 €    → 1234.56  (OCR a veces usa este)
+          Sin dec:  27.182 €      → 27182.00 (punto = miles si 3 dígitos tras él)
+          Sufijos:  334.63 €/mes  → 334.63   (también €lmes por OCR)
+        """
         texto = texto.strip()
-        # Eliminar símbolos de moneda y texto
-        texto = re.sub(r"[€$£\s]", "", texto)
-        texto = re.sub(r"[Ee][Uu][Rr][Oo][Ss]?", "", texto, flags=re.I)
-        texto = re.sub(r"EUR", "", texto, flags=re.I)
-        texto = re.sub(r"[/][Mm][Ee][Ss]", "", texto, flags=re.I)
-        texto = re.sub(r"[Mm][Ee][Ss]", "", texto, flags=re.I)   # "334.631mes" → "334.631"
-        # Normalizar separadores europeos: 1.234,56 → 1234.56 / 27.182 → 27182
+        # 1. Eliminar símbolos de moneda, espacios y sufijos temporales
+        texto = re.sub(r"[€$£\s]",              "", texto)
+        texto = re.sub(r"[Ee][Uu][Rr][Oo][Ss]?","", texto, flags=re.I)
+        texto = re.sub(r"EUR",                   "", texto, flags=re.I)
+        # "/mes", "lmes" (OCR lee '/' como 'l'), "mes" suelto
+        texto = re.sub(r"[/l][Mm][Ee][Ss]",     "", texto, flags=re.I)
+        texto = re.sub(r"[Mm][Ee][Ss][Ee][Ss]?","", texto, flags=re.I)
+        # Eliminar cualquier letra suelta que quede pegada (artefacto OCR)
+        texto = re.sub(r"[A-Za-z]",             "", texto)
+
+        # 2. Normalizar separadores de miles/decimal
         if "," in texto and "." in texto:
-            # Formato europeo claro: 1.234,56 → quitar puntos, coma→punto
-            texto = texto.replace(".", "").replace(",", ".")
+            # Determinar qué es miles y qué es decimal según cuál aparece último
+            if texto.rfind(".") > texto.rfind(","):
+                # Formato US: 1,234.56 → quitar comas, mantener punto
+                texto = texto.replace(",", "")
+            else:
+                # Formato europeo: 1.234,56 → quitar puntos, coma→punto
+                texto = texto.replace(".", "").replace(",", ".")
         elif "," in texto:
-            # Solo coma: puede ser decimal (1,5) o miles (1,500)
             partes = texto.split(",")
             if len(partes[-1]) <= 2:
-                texto = texto.replace(",", ".")   # decimal europeo
+                texto = texto.replace(",", ".")   # decimal europeo: 1,5 → 1.5
             else:
-                texto = texto.replace(",", "")    # miles
+                texto = texto.replace(",", "")    # miles: 1,500 → 1500
         elif "." in texto:
-            # Solo punto: si hay exactamente 3 dígitos tras él → separador de miles
             partes = texto.split(".")
+            # Punto como separador de miles: exactamente 3 dígitos tras él
             if len(partes) == 2 and len(partes[1]) == 3 and partes[1].isdigit():
                 texto = texto.replace(".", "")    # 27.182 → 27182
-        # Aplicar correcciones OCR a dígitos
+
+        # 3. Correcciones OCR en dígitos
         texto = texto.translate(_OCR_DIGIT_FIXES)
         try:
             valor = float(texto)
