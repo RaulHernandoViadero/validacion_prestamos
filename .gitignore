@@ -1,0 +1,64 @@
+# Entornos virtuales
+venv/
+.venv/
+env/
+.env
+
+# Variables de entorno reales (no subir al repo)
+.env.local
+
+# Pesos entrenados (ficheros grandes)
+weights/*.pt
+weights/*.pth
+
+# Datos generados (regenerables con los scripts)
+data/raw/*
+data/augmented/*
+data/splits/*
+data/annotations/*
+data/synthetic_records.json
+
+# Pero mantener los marcadores de directorio en git
+!data/raw/dnis/.gitkeep
+!data/raw/prestamos/.gitkeep
+!data/augmented/.gitkeep
+!data/splits/.gitkeep
+!data/annotations/dnis/.gitkeep
+!data/annotations/prestamos/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Logs y métricas de entrenamiento
+runs/
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Docker
+*.override.yml
+
+# Modelos descargados por ultralytics
+weights/*.pt
+weights/*.pth
+!weights/.gitkeep
